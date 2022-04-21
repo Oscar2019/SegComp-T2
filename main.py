@@ -1,38 +1,30 @@
-from pkgutil import extend_path
 import random
 import time
 import math
+import os 
 
 max = (1 << 1025) - 1
 
 random.seed(time.time())
 
 def extend_gcd(n, m):
+    """
+    https://www.youtube.com/watch?v=0oP6XLTI2tY
+    https://pt.wikipedia.org/wiki/Algoritmo_de_Euclides_estendido
+    https://www.geeksforgeeks.org/euclidean-algorithms-basic-and-extended/
+    """
     if(m == 0):
-        # (gcd, x0, y0)
-        return (n, 1, 0)
+        return n, 1, 0
     value_gcd, y0, x0 = extend_gcd(m, n%m)
     y1 = x0
-    x1 = y0 + n // m * x0
-    return (value_gcd, y1, x1)
+    x1 = y0 - n // m * x0
+    return value_gcd, y1, x1
 
-"""
-e * d mod phi_n = 1
-e * d - 1 mod phi_n = 0
-e * d - 1 = phi_n * x
-
-
-gcd(e, phi_n) = 1
-e * y + phi_n * w = 1 
-"""
 def inver_mut_mod(n, mod):
     value_gcd, y0, x0 = extend_gcd(n, mod)
-    # print("value_gcd = ", value_gcd)
-    # print("y0 = ", y0)
-    # print("x0 = ", x0)
     if value_gcd != 1:
         return (False, None)
-    return y0 % mod
+    return (True, y0 % mod)
     
 def pot(b, e, m):
     res = 1
@@ -46,6 +38,10 @@ def pot(b, e, m):
         e //= 2
     return res
 
+"""
+n é o número que será testado 
+k é o número de rodadas
+"""
 def miller_rabin (n, k = 1):
     if n % 2 == 0:
         return False
@@ -58,8 +54,9 @@ def miller_rabin (n, k = 1):
         r += 1
         r2 <<= 1
 
+    
     for _ in range(k):
-        a = random.randint(2, n-2)
+        a = int.from_bytes(os.urandom(18), "big")
         x = pot(a, d, n)
         erro = True
         if x == 1 or x == n-1:
@@ -75,46 +72,39 @@ def miller_rabin (n, k = 1):
             return False
     return True
 
-def prime_generator(n, m = 15):
+def prime_generator(max_num, raoud_num = 15):
     res = 0
     while True:
-        a = random.randint(3, n)
-        if miller_rabin(a, m):
+        a = int.from_bytes(os.urandom(18), "big")
+        if miller_rabin(a, raoud_num):
             res = a
             break
     return res
+
+foi = 0
 
 def rsa_key_generator():
     p = prime_generator(max)
     q = prime_generator(max)
     n = p * q
     phi_n = (p - 1) * (q - 1)
-    e = 3
-    while math.gcd(e, phi_n) != 1:
-        e += 2
-        e %= phi_n
-    """
-    e * d = phi_n x + 1
-    d = (phi_n x + 1) / e 
-    inverse of e
-
-    """
-    d = inver_mut_mod(e, phi_n)
-    # print("inver_mut_mod(e, phi_n) = ", inver_mut_mod(e, phi_n))
-    d = inverModular(e, phi_n)
-    # print("inverModular(e, phi_n) = ", inverModular(e, phi_n))
-    # d = (phi_n * 2 + 1) // e
-    # d %= phi_n
-
-    # print("(e * d) % phi_n = ", (e * d) % phi_n)
-    if (e * d) % phi_n == 1:
-        print("foi")
+    e = 0
+    d = 0
+    while True:
+        """
+        e * d = phi_n x + 1
+        d = (phi_n x + 1) / e 
+        inverse of e
+        """
+        e = int.from_bytes(os.urandom(18), "big")
+        pode, d = inver_mut_mod(e, phi_n)
+        if pode:
+            break
 
     public_key = e
     private_key = d
 
     return (public_key, private_key, n)
 
-rsa_key_generator()
-# print(rsa_key_generator())
+
     
