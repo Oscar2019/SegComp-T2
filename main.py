@@ -1,3 +1,4 @@
+from pkgutil import extend_path
 import random
 import time
 import math
@@ -17,6 +18,33 @@ def inverModular(x, y):
         v1, v2, v3, u1, u2, u3 = (u1 - q * v1), (u2 - q * v2), (u3 - q * v3), v1, v2, v3
     return u1 % y
 
+def extend_gcd(n, m):
+    if(m == 0):
+        # (gcd, x0, y0)
+        return (n, 1, 0)
+    value_gcd, y0, x0 = extend_gcd(m, n%m)
+    y1 = x0
+    x1 = y0 + n // m * x0
+    return (value_gcd, y1, x1)
+
+"""
+e * d mod phi_n = 1
+e * d - 1 mod phi_n = 0
+e * d - 1 = phi_n * x
+
+
+gcd(e, phi_n) = 1
+e * y + phi_n * w = 1 
+"""
+def inver_mut_mod(n, mod):
+    value_gcd, y0, x0 = extend_gcd(n, mod)
+    # print("value_gcd = ", value_gcd)
+    # print("y0 = ", y0)
+    # print("x0 = ", x0)
+    if value_gcd != 1:
+        return (False, None)
+    return y0 % mod
+    
 def pot(b, e, m):
     res = 1
     b %= m
@@ -82,12 +110,14 @@ def rsa_key_generator():
     inverse of e
 
     """
-    math
-    d = inverModular(e, n)
-    d = (phi_n * 2 + 1) // e
-    d %= phi_n
+    d = inver_mut_mod(e, phi_n)
+    # print("inver_mut_mod(e, phi_n) = ", inver_mut_mod(e, phi_n))
+    d = inverModular(e, phi_n)
+    # print("inverModular(e, phi_n) = ", inverModular(e, phi_n))
+    # d = (phi_n * 2 + 1) // e
+    # d %= phi_n
 
-    print("(e * d) % phi_n = ", (e * d) % phi_n)
+    # print("(e * d) % phi_n = ", (e * d) % phi_n)
     if (e * d) % phi_n == 1:
         print("foi")
 
@@ -96,5 +126,6 @@ def rsa_key_generator():
 
     return (public_key, private_key, n)
 
+rsa_key_generator()
 print(rsa_key_generator())
     
