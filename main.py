@@ -1,7 +1,7 @@
 import random
 import time
 import math
-import os 
+import os
 
 max = (1 << 1025) - 1
 
@@ -101,10 +101,34 @@ def rsa_key_generator():
         if pode:
             break
 
-    public_key = e
-    private_key = d
+    public_key = (e, n)
+    private_key = (d, n)
 
     return (public_key, private_key, n)
 
+def int_to_bytes_size(n):
+    m = n
+    res = 0
+    while m != 0:
+        res += 1
+        m //= 256
+    
+    return res
+
+def rsa_encript(msg, key):
+    bytes_values = str.encode(msg)
+    bytes_values_len = len(bytes_values)
+    num_msg = int.from_bytes(bytes_values, "big")
+    num_cript_msg = pot(num_msg, key[0], key[1])
+    cript_msg = int.to_bytes(num_cript_msg, int_to_bytes_size(num_cript_msg), "big").decode()
+    return cript_msg
+
+key = rsa_key_generator()
+msg = "helloWord"
+print("msg = ", msg)
+msg = rsa_encript(msg, key[0])
+print("msg = ", msg)
+msg = rsa_encript(msg, key[1])
+print("msg = ", msg)
 
     
