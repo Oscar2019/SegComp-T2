@@ -120,15 +120,23 @@ def rsa_encript(msg, key):
     bytes_values_len = len(bytes_values)
     num_msg = int.from_bytes(bytes_values, "big")
     num_cript_msg = pot(num_msg, key[0], key[1])
-    cript_msg = int.to_bytes(num_cript_msg, int_to_bytes_size(num_cript_msg), "big").decode()
-    return cript_msg
+    # cript_msg = int.to_bytes(num_cript_msg, int_to_bytes_size(num_cript_msg), "big").decode()
+    # return cript_msg
+    return num_cript_msg
+    
+def rsa_decript(msg, key):
+    num_decript_msg = pot(msg, key[0], key[1])
+    decript_msg = int.to_bytes(num_decript_msg, int_to_bytes_size(num_decript_msg), "big").decode()
 
+    return decript_msg
+
+# tam max da msg é 27
 key = rsa_key_generator()
-msg = "helloWord"
+msg = "helloWord"*3
 print("msg = ", msg)
 msg = rsa_encript(msg, key[0])
 print("msg = ", msg)
-msg = rsa_encript(msg, key[1])
+msg = rsa_decript(msg, key[1])
 print("msg = ", msg)
 
     
