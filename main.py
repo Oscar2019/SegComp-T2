@@ -1,142 +1,161 @@
-import random
-import time
-import math
-import os
+import hashlib
+import sys
+import rsa
+import aes
+import base64
 
-max = (1 << 1025) - 1
 
-random.seed(time.time())
+hash_object = hashlib.sha3_512()
 
-def extend_gcd(n, m):
-    """
-    https://www.youtube.com/watch?v=0oP6XLTI2tY
-    https://pt.wikipedia.org/wiki/Algoritmo_de_Euclides_estendido
-    https://www.geeksforgeeks.org/euclidean-algorithms-basic-and-extended/
-    """
-    if(m == 0):
-        return n, 1, 0
-    value_gcd, y0, x0 = extend_gcd(m, n%m)
-    y1 = x0
-    x1 = y0 - n // m * x0
-    return value_gcd, y1, x1
+def envia_msg(session_key, nonce, hash_key):
+    global hash_object
+    print("Digite o nome do arquivo da mensagem:")
+    msg_file_name = input()
+    msg = ""
+    with open(f'{msg_file_name}.txt', 'r') as f:
+        msg = "".join(f.readlines())
 
-def inver_mut_mod(n, mod):
-    value_gcd, y0, x0 = extend_gcd(n, mod)
-    if value_gcd != 1:
-        return (False, None)
-    return (True, y0 % mod)
+    msg_bytes = msg.encode()
+    base64_bytes = base64.b64encode(msg_bytes)
+    print(base64_bytes)
+    hash_object.update(msg_bytes)
+    hash = hash_object.hexdigest().encode()
+
+    base64_encrypted = aes.ctr_encrypt_decrypt(session_key, base64_bytes, nonce)
+    with open('msg.bin', 'wb') as f:
+        f.write(len(base64_encrypted).to_bytes(4, 'big'))
+        f.write(base64_encrypted)
+
+    hash_encrypted = rsa.rsa_encript(hash, hash_key)
+    with open('hash.bin', 'wb') as f:
+        f.write(len(hash_encrypted).to_bytes(4, 'big'))
+        f.write(hash_encrypted)
+
+    print("messagem recebida com sucesso!")
+
+def recebe_msg(session_key, nonce, hash_key):
+
+    global hash_object
+
+    msg_bytes = b""
+    base64_bytes = b""
+
+    base64_encrypted = b""
+    with open('msg.bin', 'rb') as f:
+        base64_encrypted_len = int.from_bytes(f.read(4), 'big')
+        base64_encrypted = f.read(base64_encrypted_len)
+
+    base64_bytes = aes.ctr_encrypt_decrypt(session_key, base64_encrypted, nonce)
+    print(base64_bytes)
+    msg_bytes = base64.b64decode(base64_bytes)
+    hash_object.update(msg_bytes)
+    hash = hash_object.hexdigest().encode()
+
+    hash_encrypted = b""
+    with open('hash.bin', 'rb') as f:
+        hash_encrypted_len = int.from_bytes(f.read(4), 'big')
+        hash_encrypted = f.read(hash_encrypted_len)
+    hash2 = rsa.rsa_decript(hash_encrypted, hash_key)
+
+    if hash == hash2:
+        print("messagem recebida com sucesso!")
+        print(msg_bytes.decode())
+    else:
+        print("messagem recebida com erro!")
+
+        
+
+def server(skey):
+    public_key, private_key, n = rsa.rsa_key_generator()
+    with open('public_key.txt', 'w') as f:
+        f.write(str(public_key[0]))
+        f.write("\n")
+        f.write(str(public_key[1]))
+
+    if skey:
+        with open('private_key.txt', 'w') as f:
+            f.write(str(private_key[0]))
+            f.write("\n")
+            f.write(str(private_key[1]))
     
-def pot(b, e, m):
-    res = 1
-    b %= m
-    while e != 0:
-        if e % 2 != 0:
-            res *= b
-            res %= m
-        b *= b
-        b %= m
-        e //= 2
-    return res
-
-"""
-n é o número que será testado 
-k é o número de rodadas
-"""
-def miller_rabin (n, k = 1):
-    if n % 2 == 0:
-        return False
+    input("Aperte <ENTER> para receber a chave de sessão.")
     
-    d = n - 1
-    r = 0
-    r2 = 1
-    while d % 2 == 0:
-        d //= 2
-        r += 1
-        r2 <<= 1
-
+    session_key_encripted = b""
+    nonce_encripted = b""
+    with open('session_key.bin', 'rb') as f:
+        session_key_encripted_len = int.from_bytes(f.read(4), 'big')
+        session_key_encripted = f.read(session_key_encripted_len)
+        nonce_encripted_len = int.from_bytes(f.read(4), 'big')
+        nonce_encripted = f.read(nonce_encripted_len)
     
-    for _ in range(k):
-        a = int.from_bytes(os.urandom(18), "big")
-        x = pot(a, d, n)
-        erro = True
-        if x == 1 or x == n-1:
-            erro = False
-        else:
-            m = 0
-            while m < r-1:
-                x = (x * x) % n
-                if x == n - 1:
-                    erro = False
-                m += 1
-        if erro == True:
-            return False
-    return True
 
-def prime_generator(max_num, raoud_num = 15):
-    res = 0
-    while True:
-        a = int.from_bytes(os.urandom(18), "big")
-        if miller_rabin(a, raoud_num):
-            res = a
-            break
-    return res
+    session_key = rsa.rsa_decript(session_key_encripted, private_key)
+    nonce = rsa.rsa_decript(nonce_encripted, private_key)
 
-foi = 0
+    print("session_key = ", session_key)
+    print("nonce = ", nonce)
 
-def rsa_key_generator():
-    p = prime_generator(max)
-    q = prime_generator(max)
-    n = p * q
-    phi_n = (p - 1) * (q - 1)
-    e = 0
-    d = 0
-    while True:
-        """
-        e * d = phi_n x + 1
-        d = (phi_n x + 1) / e 
-        inverse of e
-        """
-        e = int.from_bytes(os.urandom(18), "big")
-        pode, d = inver_mut_mod(e, phi_n)
-        if pode:
-            break
-
-    public_key = (e, n)
-    private_key = (d, n)
-
-    return (public_key, private_key, n)
-
-def int_to_bytes_size(n):
-    m = n
-    res = 0
-    while m != 0:
-        res += 1
-        m //= 256
-    
-    return res
-
-def rsa_encript(msg, key):
-    bytes_values = str.encode(msg)
-    bytes_values_len = len(bytes_values)
-    num_msg = int.from_bytes(bytes_values, "big")
-    num_cript_msg = pot(num_msg, key[0], key[1])
-    # cript_msg = int.to_bytes(num_cript_msg, int_to_bytes_size(num_cript_msg), "big").decode()
-    # return cript_msg
-    return num_cript_msg
-    
-def rsa_decript(msg, key):
-    num_decript_msg = pot(msg, key[0], key[1])
-    decript_msg = int.to_bytes(num_decript_msg, int_to_bytes_size(num_decript_msg), "big").decode()
-
-    return decript_msg
-
-# tam max da msg é 27
-key = rsa_key_generator()
-msg = "helloWord"*3
-print("msg = ", msg)
-msg = rsa_encript(msg, key[0])
-print("msg = ", msg)
-msg = rsa_decript(msg, key[1])
-print("msg = ", msg)
+    print("Chave de sessão recebida.")
+    status = "-1"
+    while status != "0":
+        status = input("Digite 0 para sair, 1 para enviar uma mensagem, 2 para receber uma mensagem: ")
+        if status == "1":
+            envia_msg(session_key, nonce, private_key)
+        elif status == "2":
+            recebe_msg(session_key, nonce, private_key)
 
     
+
+def client():
+    public_key = (0, 0)
+    nonce = 0
+    with open('public_key.txt', 'r') as f:
+        public_key = (int(f.readline().strip()), int(f.readline().strip()))
+    
+    input("Aperte <ENTER> para envivar a chave de sessão.")
+
+    session_key = aes.aes_key_generator()
+    nonce = aes.aes_key_generator()
+    print("session_key = ", session_key)
+    print("nonce = ", nonce)
+
+    session_key_encripted = rsa.rsa_encript(session_key, public_key)
+    nonce_encripted = rsa.rsa_encript(nonce, public_key)
+    with open('session_key.bin', 'wb') as f:
+        f.write(len(session_key_encripted).to_bytes(4, 'big'))
+        f.write(session_key_encripted)
+        f.write(len(nonce_encripted).to_bytes(4, 'big'))
+        f.write(nonce_encripted)
+    
+    print("Chave de sessão enviada.")
+    status = "-1"
+    while status != "0":
+        status = input("Digite 0 para sair, 1 para enviar uma mensagem, 2 para receber uma mensagem: ")
+        if status == "1":
+            envia_msg(session_key, nonce, public_key)
+        elif status == "2":
+            recebe_msg(session_key, nonce, public_key)
+
+
+
+
+
+
+def main():
+    tipo = 1
+    skey = False
+    for arg in sys.argv:
+        if arg == "-1":
+            tipo = 1
+        elif arg == "-2":
+            tipo = 2
+        elif arg == "-s":
+            skey = True
+    
+    if tipo == 1:
+        server(skey)
+    elif tipo == 2:
+        client()
+
+if __name__ == "__main__":
+    main()

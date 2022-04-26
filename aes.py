@@ -1,5 +1,6 @@
 from constant import sbox
 from rijndael_finite_number import RijndaelFiniteNumber
+import os
 
 def sub_bytes(matriz):
     res = [[ 0 for _ in range(4)] for _ in range(4)]
@@ -75,7 +76,10 @@ def encrypt_block(key, msg):
     res = b"".join([b"".join(map(lambda x: x.to_bytes(1, 'big'), line)) for line in msg])
     # print('res = ', res)
     return res
-    
+
+def aes_key_generator():
+    return os.urandom(16)
+
 
 def add_nonce(nonce, value, size = 128):
     return (int.from_bytes(nonce, 'big') + value).to_bytes(16, 'big')
@@ -103,7 +107,7 @@ def main():
     mat = 'oscar_etcheaverry_barbosa_madureira_da_silva'
     mat = mat.encode()
     ctr_encrypt_decrypt(key, ctr_encrypt_decrypt(key, mat, b"abcdefghijklmnop"), b"abcdefghijklmnop")
-    # print(encrypt_block(key, mat))
+    print(encrypt_block(key, mat))
     
 
 if __name__ == "__main__":
