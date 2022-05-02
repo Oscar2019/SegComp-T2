@@ -17,7 +17,6 @@ def envia_msg(session_key, nonce, hash_key):
 
     msg_bytes = msg.encode()
     base64_bytes = base64.b64encode(msg_bytes)
-    print(base64_bytes)
     hash_object.update(msg_bytes)
     hash = hash_object.hexdigest().encode()
 
@@ -46,7 +45,6 @@ def recebe_msg(session_key, nonce, hash_key):
         base64_encrypted = f.read(base64_encrypted_len)
 
     base64_bytes = aes.ctr_encrypt_decrypt(session_key, base64_encrypted, nonce)
-    print(base64_bytes)
     msg_bytes = base64.b64decode(base64_bytes)
     hash_object.update(msg_bytes)
     hash = hash_object.hexdigest().encode()
