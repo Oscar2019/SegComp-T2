@@ -30,7 +30,7 @@ def envia_msg(session_key, nonce, hash_key):
         f.write(len(hash_encrypted).to_bytes(4, 'big'))
         f.write(hash_encrypted)
 
-    print("messagem recebida com sucesso!")
+    print("messagem enviada com sucesso!")
 
 def recebe_msg(session_key, nonce, hash_key):
 
